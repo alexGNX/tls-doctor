@@ -2,8 +2,10 @@
 
 A Rust CLI to inspect TLS certificates and chains, with two subcommands:
 
-- diag: diagnose a live server or a PEM bundle and validate the chain
-- scaffold: build a full bundle from a leaf certificate file by fetching intermediates via AIA
+- **diag**: diagnose a live server or a PEM bundle and validate the chain
+- **scaffold**: build a full bundle from a leaf certificate file by fetching intermediates via AIA
+
+
 
 ## Installation
 
@@ -11,7 +13,7 @@ A Rust CLI to inspect TLS certificates and chains, with two subcommands:
 cargo install --path .
 ```
 
-## For developers (build & test)
+## Build & test
 
 ```bash
 # Build
@@ -24,33 +26,42 @@ cargo test
 cargo run -- diag -s google.com -p 443
 ```
 
-## CLI usage (end users)
+## CLI usage
+
+### diag subcommand
 
 ```bash
-# diag (server)
-tls-doctor diag -s google.com -p 443
+tls-doctor diag -h
+Diagnose a live server or a PEM bundle
 
-# diag with verification disabled (inspect invalid/self-signed chains)
-tls-doctor diag --insecure -s example.com
+Usage: tls-doctor diag [OPTIONS] <--server <SERVER>|--file <FILE>>
 
-# diag (file)
-tls-doctor diag -f res/valid.pem
-
-# scaffold (from leaf file to bundle)
-tls-doctor scaffold -i res/leaf.crt -o bundle.pem
+Options:
+  -s, --server <SERVER>  Domain name or IP of the server to connect to
+  -f, --file <FILE>      PEM bundle file (one or more concatenated certificates)
+  -p, --port <PORT>      Port of the server (default: 443) [default: 443]
+      --insecure         Disable certificate verification (like -verify 0). Useful for inspecting invalid chains
+  -h, --help             Print help
 ```
+\
+![Overview](res/screens/diag.png)
 
-### diag flags
 
-- `-s, --server <HOST>`: Server name or IP (mutually exclusive with --file)
-- `-f, --file <FILE>`: PEM bundle file as input (mutually exclusive with --server)
-- `-p, --port <PORT>`: Port (default: 443)
-- `--insecure`: Disable certificate verification
+### scaffold subcommand
 
-### scaffold flags
+```bash
+tls-doctor scaffold -h
+Scaffold a complete bundle from a leaf certificate file
 
-- `-i, --input <FILE>`: Input leaf certificate (PEM or DER)
-- `-o, --output <FILE>`: Output bundle path (PEM)
+Usage: tls-doctor scaffold --input <INPUT> --output <OUTPUT>
+
+Options:
+  -i, --input <INPUT>    Input leaf certificate file (PEM or DER)
+  -o, --output <OUTPUT>  Output bundle destination (PEM); will be created/overwritten
+  -h, --help             Print help
+```
+\
+![Scaffold](res/screens/scaffold.png)
 
 ## How it works
 

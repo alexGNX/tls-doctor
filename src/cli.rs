@@ -38,7 +38,6 @@ pub struct DiagArgs {
 }
 
 #[derive(Args, Debug)]
-#[command(group(ArgGroup::new("input").required(true).args(["server", "file"])))]
 pub struct ScaffoldArgs {
     /// Input leaf certificate file (PEM or DER)
     #[arg(short = 'i', long = "input", required = true)]
