@@ -1,0 +1,11 @@
+[package]
+name = "tls-doctor"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+openssl = "0.10"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls", "gzip"] }
+x509-parser = "0.15"
