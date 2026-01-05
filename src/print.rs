@@ -1,14 +1,31 @@
 use anyhow::Result;
 use openssl::x509::X509Ref;
-use crate::util::{name_items, fingerprint_sha256, ec_curve_name, infer_cert_type, BOLD, BLUE, RESET};
+use crate::util::{name_items, fingerprint_sha256, ec_curve_name, infer_cert_type};
 use openssl::pkey::Id as KeyId;
+use std::io::Write;
+use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
+
+pub fn print_bold<W: WriteColor>(w: &mut W, text: &str) -> Result<()> {
+    w.set_color(ColorSpec::new().set_bold(true))?;
+    write!(w, "{}", text)?;
+    w.reset()?;
+    Ok(())
+}
+
+pub fn print_bold_blue<W: WriteColor>(w: &mut W, text: &str) -> Result<()> {
+    w.set_color(ColorSpec::new().set_bold(true).set_fg(Some(Color::Blue)))?;
+    write!(w, "{}", text)?;
+    w.reset()?;
+    Ok(())
+}
 
 // Render the ordered chain with a simple "is issued by ->" separator for readability.
 pub fn print_chain_with_separator(seq: &[&X509Ref]) -> Result<()> {
+    let mut stdout = StandardStream::stdout(ColorChoice::Auto);
     for (i, cert) in seq.iter().enumerate() {
-        print_cert_info(i + 1, cert)?;
+        print_cert_info_to(&mut stdout, i + 1, cert)?;
         if i + 1 < seq.len() {
-            println!("is issued by ->");
+            writeln!(&mut stdout, "is issued by ->")?;
         }
     }
     Ok(())
@@ -17,6 +34,11 @@ pub fn print_chain_with_separator(seq: &[&X509Ref]) -> Result<()> {
 // Print a concise, human-oriented view: Subject/Issuer (selected attributes),
 // key algorithm and size, and a SHA-256 fingerprint.
 pub fn print_cert_info(idx: usize, cert: &X509Ref) -> Result<()> {
+    let mut stdout = StandardStream::stdout(ColorChoice::Auto);
+    print_cert_info_to(&mut stdout, idx, cert)
+}
+
+fn print_cert_info_to<W: WriteColor>(w: &mut W, idx: usize, cert: &X509Ref) -> Result<()> {
     let subject_items = name_items(cert.subject_name().entries());
     let issuer_items = name_items(cert.issuer_name().entries());
 
@@ -35,21 +57,45 @@ pub fn print_cert_info(idx: usize, cert: &X509Ref) -> Result<()> {
     // Prefer SHA-256 which is widely used by modern tooling
     let fp = fingerprint_sha256(cert)?;
 
-    println!("[{}]", idx);
-    println!("  {BOLD}Subject:{RESET}");
+    writeln!(w, "[{}]", idx)?;
+    
+    write!(w, "  ")?;
+    print_bold(w, "Subject:")?;
+    writeln!(w)?;
+
     if let Some(kind) = infer_cert_type(cert) {
-        println!("    - {BOLD}Type:{RESET} {BLUE}{}{RESET}", kind);
+        write!(w, "    - ")?;
+        print_bold(w, "Type:")?;
+        write!(w, " ")?;
+        print_bold_blue(w, &kind)?;
+        writeln!(w)?;
     }
     for (label, value) in subject_items {
-        println!("    - {BOLD}{}:{RESET} {BLUE}{}{RESET}", label, value);
+        write!(w, "    - ")?;
+        print_bold(w, &format!("{}:", label))?;
+        write!(w, " ")?;
+        print_bold_blue(w, &value)?;
+        writeln!(w)?;
     }
-    println!("  {BOLD}Issuer:{RESET}  ");
+    print_bold(w, "  Issuer:")?;
+    writeln!(w, "  ")?;
     for (label, value) in issuer_items {
-        println!("    - {BOLD}{}:{RESET} {BLUE}{}{RESET}", label, value);
+        write!(w, "    - ")?;
+        print_bold(w, &format!("{}:", label))?;
+        write!(w, " ")?;
+        print_bold_blue(w, &value)?;
+        writeln!(w)?;
     }
-    println!("  {BOLD}Public Key:{RESET} {BLUE}{} {} bits{RESET}", alg, key_bits);
-    println!("  {BOLD}SHA-256 Fingerprint:{RESET} {BLUE}{}{RESET}", fp);
-    println!();
+    print_bold(w, "  Public Key:")?;
+    write!(w, " ")?;
+    print_bold_blue(w, &format!("{} {} bits", alg, key_bits))?;
+    writeln!(w)?;
+
+    print_bold(w, "  SHA-256 Fingerprint:")?;
+    write!(w, " ")?;
+    print_bold_blue(w, &fp)?;
+    writeln!(w)?;
+    writeln!(w)?;
 
     Ok(())
 }

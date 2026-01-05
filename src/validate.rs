@@ -3,6 +3,9 @@ use openssl::stack::Stack;
 use openssl::x509::store::X509StoreBuilder;
 use openssl::x509::{X509, X509Ref, X509StoreContext};
 use crate::util::format_name_human;
+use crate::print::print_bold;
+use std::io::Write;
+use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 /// Verify `leaf` against the system trust store with optional intermediates `chain`.
 /// Returns Ok(Ok(())) on success, Ok(Err(msg)) for a verify failure with human context,
@@ -36,16 +39,26 @@ pub fn validate_chain(leaf: &X509Ref, chain: &[&X509Ref]) -> Result<Result<(), S
 }
 
 pub fn validate_and_report(seq: &[&X509Ref], _unused: &[&X509Ref]) -> Result<()> {
+    let mut stdout = StandardStream::stdout(ColorChoice::Auto);
     if let Some(leaf) = seq.first() {
         match validate_chain(leaf, &seq[1..]) {
-            Ok(Ok(())) => println!("✅ the chain is valid"),
+            Ok(Ok(())) => {
+                stdout.set_color(ColorSpec::new().set_fg(Some(Color::Green)))?;
+                write!(&mut stdout, "✅ the chain is valid")?;
+                stdout.reset()?;
+                writeln!(&mut stdout)?;
+            }
             Ok(Err(msg)) => {
-                println!("❌ the chain has issues:");
-                println!("- {}", msg);
+                stdout.set_color(ColorSpec::new().set_fg(Some(Color::Red)))?;
+                print_bold(&mut stdout, "❌ the chain has issues:")?;
+                writeln!(&mut stdout)?;
+                writeln!(&mut stdout, "- {}", msg)?;
             }
             Err(e) => {
-                println!("❌ the chain has issues:");
-                println!("- validation error: {}", e);
+                stdout.set_color(ColorSpec::new().set_fg(Some(Color::Red)))?;
+                print_bold(&mut stdout, "❌ the chain has issues:")?;
+                writeln!(&mut stdout)?;
+                writeln!(&mut stdout, "- validation error: {}", e)?;
             }
         }
     }

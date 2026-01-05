@@ -5,6 +5,8 @@ use openssl::x509::{X509Ref, X509};
 use std::net::TcpStream;
 use std::path::PathBuf;
 use clap::Parser;
+use std::io::Write;
+use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 mod cli;
 mod chain;
@@ -15,7 +17,7 @@ mod scaffold;
 
 use crate::chain::order_chain_leaf_to_root;
 use crate::cli::{Cli, Command};
-use crate::print::{print_cert_info, print_chain_with_separator};
+use crate::print::{print_cert_info, print_chain_with_separator, print_bold};
 use crate::validate::{validate_and_report, validate_chain};
 use crate::util::{issuer_cn, subject_cn};
 use crate::scaffold::{build_bundle_from_leaf_file, write_pem_bundle};
@@ -58,7 +60,8 @@ fn run_diag(args: &crate::cli::DiagArgs) -> Result<()> {
     // Grab the peer certificate chain (includes leaf). Some servers may not send intermediates.
     let chain = ssl_stream.ssl().peer_cert_chain();
 
-    println!("--- Certificate chain (leaf -> root) ---");
+    let mut stdout = StandardStream::stdout(ColorChoice::Auto);
+    writeln!(&mut stdout, "--- Certificate chain (leaf -> root) ---")?;
 
     // Build the sequence leaf -> chain (skipping duplicate leaf if present)
     let leaf_opt = ssl_stream.ssl().peer_certificate();
@@ -105,7 +108,8 @@ fn run_with_file(path: &PathBuf) -> Result<()> {
     // Order certificates: attempt to assemble a leaf->root chain from the set
     let (seq, unused) = order_chain_leaf_to_root(&certs);
 
-    println!("--- Certificate chain (leaf -> root) ---");
+    let mut stdout = StandardStream::stdout(ColorChoice::Auto);
+    writeln!(&mut stdout, "--- Certificate chain (leaf -> root) ---")?;
     print_chain_with_separator(&seq)?;
     // Also display unrelated certificates, if any, without "issued by"
     let mut issues: Vec<String> = Vec::new();
@@ -133,7 +137,7 @@ fn run_with_file(path: &PathBuf) -> Result<()> {
         let iss = last.issuer_name().to_der().unwrap_or_default();
         if subj != iss {
             let label = issuer_cn(last).map(|cn| format!("CN={}", cn)).unwrap_or_else(|| "<unknown>".to_string());
-            issues.push(format!("chain incomplete: missing issuer for {}", label));
+            issues.push(format!("chain incomplete: missing issuer {}", label));
         } else if let Ok(pk) = last.public_key() {
             if last.verify(&pk).is_err() {
                 issues.push("root certificate signature does not verify itself".to_string());
@@ -145,26 +149,37 @@ fn run_with_file(path: &PathBuf) -> Result<()> {
         match validate_chain(leaf, &seq[1..]) {
             Ok(Ok(())) => {
                 if issues.is_empty() {
-                    println!("✅ the chain is valid");
+                    stdout.set_color(ColorSpec::new().set_fg(Some(Color::Green)))?;
+                    write!(&mut stdout, "✅ the chain is valid")?;
+                    stdout.reset()?;
+                    writeln!(&mut stdout)?;
                 } else {
-                    println!("❌ the chain has issues:");
-                    for i in &issues { println!("- {}", i); }
+                    stdout.set_color(ColorSpec::new().set_fg(Some(Color::Red)))?;
+                    print_bold(&mut stdout, "❌ the chain has issues:")?;
+                    writeln!(&mut stdout)?;
+                    for i in &issues { writeln!(&mut stdout, "- {}", i)?; }
                 }
             }
             Ok(Err(msg)) => {
                 issues.push(msg);
-                println!("❌ the chain has issues:");
-                for i in &issues { println!("- {}", i); }
+                stdout.set_color(ColorSpec::new().set_fg(Some(Color::Red)))?;
+                print_bold(&mut stdout, "❌ the chain has issues:")?;
+                writeln!(&mut stdout)?;
+                for i in &issues { writeln!(&mut stdout, "- {}", i)?; }
             }
             Err(e) => {
                 issues.push(format!("validation error: {}", e));
-                println!("❌ the chain has issues:");
-                for i in &issues { println!("- {}", i); }
+                stdout.set_color(ColorSpec::new().set_fg(Some(Color::Red)))?;
+                print_bold(&mut stdout, "❌ the chain has issues:")?;
+                writeln!(&mut stdout)?;
+                for i in &issues { writeln!(&mut stdout, "- {}", i)?; }
             }
         }
     } else {
-        println!("❌ the chain has issues:");
-        println!("- no certificates parsed");
+        stdout.set_color(ColorSpec::new().set_fg(Some(Color::Red)))?;
+        print_bold(&mut stdout, "❌ the chain has issues:")?;
+        writeln!(&mut stdout)?;
+        writeln!(&mut stdout, "- no certificates parsed")?;
     }
 
     Ok(())

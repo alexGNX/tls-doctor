@@ -4,12 +4,6 @@ use openssl::nid::Nid;
 use openssl::pkey::Id as KeyId;
 use openssl::x509::{X509NameEntries, X509Ref};
 
-// Simple ANSI styles (kept minimal; caller may choose to suppress via NO_COLOR conventions)
-pub const BOLD: &str = "\x1b[1m";
-pub const BOLD_BLUE: &str = "\x1b[1;34m";
-pub const BLUE: &str = "\x1b[34m";
-pub const RESET: &str = "\x1b[0m";
-
 /// Extract a subset of X.509 name attributes and map them to human labels
 /// in a consistent order for display.
 pub fn name_items(entries: X509NameEntries<'_>) -> Vec<(&'static str, String)> {
@@ -99,7 +93,7 @@ pub fn format_name_human(entries: X509NameEntries<'_>) -> String {
                     Nid::LOCALITYNAME => "Locality",
                     _ => "",
                 };
-                out.push_str(&format!("{BOLD_BLUE}{label}{RESET}={}", v));
+                out.push_str(&format!("{}={}", label, v));
             }
         }
     }

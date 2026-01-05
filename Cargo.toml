@@ -9,3 +9,4 @@ clap = { version = "4", features = ["derive"] }
 openssl = "0.10"
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls", "gzip"] }
 x509-parser = "0.15"
+termcolor = "1.4"
