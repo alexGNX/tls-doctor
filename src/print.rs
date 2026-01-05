@@ -1,6 +1,6 @@
 use anyhow::Result;
 use openssl::x509::X509Ref;
-use crate::util::{name_items, fingerprint_sha256, ec_curve_name, infer_cert_type};
+use crate::util::{name_items, fingerprint_sha256, ec_curve_name, infer_cert_type, format_asn1_time};
 use openssl::pkey::Id as KeyId;
 use std::io::Write;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
@@ -86,6 +86,19 @@ fn print_cert_info_to<W: WriteColor>(w: &mut W, idx: usize, cert: &X509Ref) -> R
         print_bold_blue(w, &value)?;
         writeln!(w)?;
     }
+    print_bold(w, "  Validity:")?;
+    writeln!(w)?;
+    write!(w, "    - ")?;
+    print_bold(w, "Not Before:")?;
+    write!(w, " ")?;
+    print_bold_blue(w, &format_asn1_time(cert.not_before()))?;
+    writeln!(w)?;
+    write!(w, "    - ")?;
+    print_bold(w, "Not After: ")?;
+    write!(w, " ")?;
+    print_bold_blue(w, &format_asn1_time(cert.not_after()))?;
+    writeln!(w)?;
+
     print_bold(w, "  Public Key:")?;
     write!(w, " ")?;
     print_bold_blue(w, &format!("{} {} bits", alg, key_bits))?;

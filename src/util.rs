@@ -3,6 +3,7 @@ use openssl::hash::MessageDigest;
 use openssl::nid::Nid;
 use openssl::pkey::Id as KeyId;
 use openssl::x509::{X509NameEntries, X509Ref};
+use openssl::asn1::Asn1TimeRef;
 
 /// Extract a subset of X.509 name attributes and map them to human labels
 /// in a consistent order for display.
@@ -128,6 +129,11 @@ pub fn fingerprint_sha256(cert: &X509Ref) -> Result<String> {
         .map(|b| format!("{:02X}", b))
         .collect::<Vec<_>>()
         .join(":"))
+}
+
+/// Format ASN1 time to a human-readable string.
+pub fn format_asn1_time(time: &Asn1TimeRef) -> String {
+    time.to_string()
 }
 
 /// Try to get the named curve for EC public keys (short or long name).
